@@ -1,0 +1,46 @@
+[package]
+name = "without-a-bundler"
+version = "0.1.0"
+authors = ["The wasm-bindgen Developers"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+js-sys = "0.3.41" #for opengl
+wasm-bindgen = "0.2.64"
+console_error_panic_hook = "0.1.6"
+wasm-bindgen-futures = "*"
+
+
+[dependencies.web-sys]
+version = "0.3.4"
+features = [
+  'Document',
+  'Element',
+  'HtmlCanvasElement',
+  'WebGlBuffer',
+  'WebGlRenderingContext',
+  'WebGlProgram',
+  'WebGlShader',
+  'Window',
+  "BinaryType",
+  "Blob",
+  "ErrorEvent",
+  "FileReader",
+  "MessageEvent",
+  "ProgressEvent",
+  "WebSocket",
+]
+#features = [
+#  'Document',
+#  'Element',
+#  'HtmlElement',
+#  'Node',
+#  'Window',
+#  'WebSocket'
+#]
+
+[profile.release]
+lto = true
