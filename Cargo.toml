@@ -21,7 +21,7 @@ features = [
   'Element',
   'HtmlCanvasElement',
   'WebGlBuffer',
-  'WebGlRenderingContext',
+  'WebGl2RenderingContext',
   'WebGlProgram',
   'WebGlShader',
   'Window',
@@ -32,6 +32,8 @@ features = [
   "MessageEvent",
   "ProgressEvent",
   "WebSocket",
+  "WebGlUniformLocation",
+  
 ]
 #features = [
 #  'Document',
