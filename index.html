@@ -3,7 +3,7 @@
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
   </head>
   <body>
-    <canvas id="canvas" height="150" width="150" />
+    <canvas id="canvas"  width="800" height="600"/>
     <!-- Note the usage of `type=module` here as this is an ES6 module -->
     <script type="module">
       // Use ES module import syntax to import functionality from the module
@@ -14,8 +14,10 @@
       // don't support natively imported WebAssembly as an ES module, but
       // eventually the manual initialization won't be required!
       //import init, { add } from './pkg/without_a_bundler.js';
-      import init from './pkg/without_a_bundler.js';
-      function connect() {
+      import init, {game_initial,game_new,game_premove,game_process,game_draw} from './pkg/without_a_bundler.js';
+
+      let messages = []
+      function socket_connect() {
           return new Promise(function(resolve, reject) {
               var server = new WebSocket('ws://127.0.0.1:12345');
               server.onopen = function() {
@@ -24,9 +26,26 @@
               server.onerror = function(err) {
                   reject(err);
               };
+              server.onmessage=function(m){
+                messages.push(m);
+                console.log(messages.length)
+              } 
 
           });
       }
+
+      function receive(socket){
+         return new Promise(function(resolve,reject){
+              (function waitForFoo(){
+                  if (messages.length>0){
+                    return resolve(messages.shift().data);
+                  } 
+                  setTimeout(waitForFoo, 30);
+              })();
+         });
+      }
+
+
       async function run() {
         // First up we need to actually load the wasm file, so we use the
         // default export to inform it where the wasm file is located on the
@@ -56,7 +75,41 @@
         // modes
         await init();
 
+        try {
+            let socket = await socket_connect();
+            socket.binaryType="arraybuffer";
+            // ... use server
+            let o=game_initial(0,"hay");
+            console.log(o);
+            socket.send(o);
 
+            let g1=await receive(socket);
+            console.log(g1);
+            let g2=await receive(socket);
+            console.log(g2);
+            game_new(0,"hay",g1,g2);
+            console.log("finished making");
+            
+            while(true){
+              let k=game_premove(0,0,false);
+              console.log("looping",k);
+              if (k){
+                socket.send(k)
+                console.log("waiting to receive")
+                let g1=await receive(socket)
+                console.log("received")
+                game_process(g1);
+              }else{
+                game_process(null);
+              }
+              
+              
+            }
+            
+      
+        } catch (error) {
+            console.log("ooops ", error)
+        }
         // And afterwards we can use all the functionality defined in wasm.
         //const result = add(1, 2);
         //console.log(`1 + 2 = ${result}`);
@@ -66,17 +119,11 @@
       console.log("starting");
       run();
       console.log("yo");
-      /*
-      connect().then(function(server) {
-        console.log("suggess connected!!!");
 
-        server.send("hello server");
-          // server is ready here
-      }).catch(function(err) {
-        console.log("fail");
-          // error here
-      });
-      */
+      
+
+        
+      
     </script>
   </body>
 </html>
