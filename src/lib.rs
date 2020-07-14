@@ -74,7 +74,8 @@ pub fn game_premove(x:f32,y:f32,clicked:bool)->Option<js_sys::ArrayBuffer>{
         let myplayerid=m.get_playerid();
         let target=cursor.inner_into();
         let half=axgeom::vec2(window_dim_x,window_dim_y)/2.0;
-        let p=m.get_game().state.bots[myplayerid.0 as usize].0.body.pos;
+        let p=*m.get_camera();
+        //let p=m.get_game().state.bots[myplayerid.0 as usize].0.body.pos;
         let mtarget=-half+target+p;
         
         Some(mtarget.into())
@@ -161,7 +162,8 @@ pub fn game_draw(width:i32,height:i32){
     context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
 
 
-    let pp=game.state.bots[m.get_playerid().0 as usize].0.body.pos;
+    //let pp=game.state.bots[m.get_playerid().0 as usize].0.body.pos;
+    let pp=m.get_camera();
     let offset=-(pp.inner_into::<f32>())+axgeom::vec2(window_dim_x,window_dim_y)/2.0;
     let offset:[f32;2]=offset.into();
 

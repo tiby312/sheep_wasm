@@ -109,12 +109,16 @@
             socket.send(o);
 
             let g1=await receive(socket);
-            console.log(g1);
             let g2=await receive(socket);
-            console.log(g2);
             game_new(0,"hay",g1,g2);
             
+            function delay(ms) {
+              return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
             while(true){
+              await delay(16)
+
               let foo={x:0.0,y:0.0};
               let clicked=false;
               if (clicks.length>0){
@@ -133,11 +137,12 @@
                 game_process(null);
               }
               
-              console.log(canvas.width,canvas.height);
               canvas.width  = window.innerWidth;
               canvas.height = window.innerHeight;
               
-              game_draw(canvas.width,canvas.height);
+              window.requestAnimationFrame(function(){
+                game_draw(canvas.width,canvas.height);
+              });
               
             }
             
