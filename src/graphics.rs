@@ -59,11 +59,12 @@ impl MyProgram{
             void main() {
                 //coord is between -0.5 and 0.5
                 vec2 coord = gl_PointCoord - vec2(0.5,0.5);
-
+                /*
                 float foo=coord.x*coord.x*coord.x*coord.x+coord.y*coord.y*coord.y*coord.y;
                 if(foo > 0.25*0.25){                  //outside of circle radius?
                     discard;
-                }            
+                } 
+                */           
                 out_color = bg;
             }
         "#,
