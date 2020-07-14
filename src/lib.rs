@@ -17,10 +17,13 @@ use web_sys::{ErrorEvent, MessageEvent, WebSocket};
 use shclient_gen::*;
 
 static mut STATE: Option<Manager> = None;
-
+static mut PROGRAM:Option<MyProgram> = None;
 
 #[wasm_bindgen]
 pub fn game_initial(gameid:u32,name:js_sys::JsString)->js_sys::ArrayBuffer{
+    
+
+
     let gameid=GameID(gameid);
     
     let name=PlayerName(name.into());
@@ -89,11 +92,69 @@ pub fn game_process(s:Option<js_sys::ArrayBuffer>){
 #[wasm_bindgen]
 pub fn game_draw(){
     let game=unsafe{STATE.as_ref().unwrap().get_game()};
-    //TODO draw
+
+    //TODO get context every time?
+    let document = web_sys::window().unwrap().document().unwrap();
+    let canvas = document.get_element_by_id("canvas").unwrap();
+    let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
+
+
+    let context = canvas
+        .get_context("webgl2").unwrap()
+        .unwrap()
+        .dyn_into::<WebGl2RenderingContext>().unwrap();
+
+    let mut p=unsafe{PROGRAM.as_mut().unwrap()};
+
+
+    let m=unsafe{STATE.as_ref().unwrap()};
+    
+    let mut verts=Vec::new();
+    for (b,_) in m.get_game().state.bots.iter(){
+        let p:[f32;2]=b.body.pos.into();
+        verts.push(p[0]);
+        verts.push(p[1]);
+    }
+
+    let mut squares=Vec::new();
+    let walls=&game.nonstate.walls;
+    let grid_viewport=&game.nonstate.grid_viewport;
+     for x in 0..walls.dim().x {
+        for y in 0..walls.dim().y {
+            let curr=axgeom::vec2(x,y);
+            if walls.get(curr) {
+                let pos=grid_viewport.to_world_center(axgeom::vec2(x, y));
+                let p:[f32;2]=pos.into();
+                squares.push(p[0]);
+                squares.push(p[1]);
+            }
+        }
+    }
+
+    let dim=[800.0,600.0];
+    context.clear_color(0.0, 0.0, 0.0, 1.0);
+    context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
+
+    p.draw(&context,&verts,dim,false,&[1.0,0.0,0.0,1.0]);
+    p.draw(&context,&squares,dim,true,&[0.0,1.0,0.0,1.0]);
 }
 
+#[wasm_bindgen(start)]
+pub fn main() -> Result<(), JsValue> {
+    //TODO get context every time?
+    let document = web_sys::window().unwrap().document().unwrap();
+    let canvas = document.get_element_by_id("canvas").unwrap();
+    let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
+    let context = canvas
+        .get_context("webgl2").unwrap()
+        .unwrap()
+        .dyn_into::<WebGl2RenderingContext>().unwrap();
+    unsafe{PROGRAM=Some(MyProgram::new(&context).unwrap())};
+    Ok(())
 
 
+}
+/*
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
@@ -112,16 +173,25 @@ pub fn main() -> Result<(), JsValue> {
     
     
     let mut p=MyProgram::new(&context)?;
-
+    let m=unsafe{STATE.as_ref().unwrap()};
+    
+    let mut verts=Vec::new();
+    for (b,_) in m.get_game().state.bots.iter(){
+        let p:[f32;2]=b.body.pos.into();
+        verts.push(p[0]);
+        verts.push(p[1]);
+    }
     //let vertices= [-0.7f32, -0.7, 0.7, -0.7, 0.0, 0.7];
 
-    let vertices= [400.0, 500.0];
+    //let vertices= [400.0, 500.0];
 
     context.clear_color(0.0, 0.0, 0.0, 1.0);
     context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
 
     let dim=[800.0,600.0];
-    p.draw(&context,&vertices,dim,true);
+
+
+    p.draw(&context,&verts,dim,true);
     
 
     
@@ -140,3 +210,4 @@ pub fn main() -> Result<(), JsValue> {
     
     Ok(())
 }
+*/

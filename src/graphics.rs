@@ -73,7 +73,7 @@ impl MyProgram{
         let square_program = link_program(&context, &vert_shader, &frag_shader_square)?;
         Ok(MyProgram{square_program,circle_program,buffer})
     }
-    pub fn draw(&mut self,context:&WebGl2RenderingContext,vertices:&[f32],game_dim:[f32;2],as_square:bool){
+    pub fn draw(&mut self,context:&WebGl2RenderingContext,vertices:&[f32],game_dim:[f32;2],as_square:bool,color:&[f32;4]){
 
         
         let buffer=&self.buffer;
@@ -98,7 +98,7 @@ impl MyProgram{
 
 
         let bf=context.get_uniform_location(program,"bg");
-        context.uniform4fv_with_f32_array(bf.as_ref(),&[1.0,0.0,1.0,1.0]);
+        context.uniform4fv_with_f32_array(bf.as_ref(),color);
         let foo=  context.get_attrib_location(program, "position") as u32;
 
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(buffer));
