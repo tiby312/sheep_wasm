@@ -57,13 +57,32 @@ pub fn game_new(gameid:u32,name:js_sys::JsString,a:js_sys::ArrayBuffer,b:js_sys:
 
 #[wasm_bindgen]
 pub fn game_premove(x:f32,y:f32,clicked:bool)->Option<js_sys::ArrayBuffer>{
+    let cursor=axgeom::vec2(x,y);
+
+    let m=unsafe{STATE.as_mut().unwrap()};
+
+    let document = web_sys::window().unwrap().document().unwrap();
+    let canvas = document.get_element_by_id("canvas").unwrap();
+    let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
+
+    let window_dim_x=canvas.width() as f32;
+    let window_dim_y=canvas.height() as f32;
+    
+
+
     let mycommit=if clicked{
-        Some([x,y])
+        let myplayerid=m.get_playerid();
+        let target=cursor.inner_into();
+        let half=axgeom::vec2(window_dim_x,window_dim_y)/2.0;
+        let p=m.get_game().state.bots[myplayerid.0 as usize].0.body.pos;
+        let mtarget=-half+target+p;
+        
+        Some(mtarget.into())
     }else{
         None
     };
 
-    let k=unsafe{STATE.as_mut().unwrap().premove(mycommit)};
+    let k=m.premove(mycommit);
     if let Some(k)=k{
         let bytes=bincode::serialize(&k).unwrap();
         let k:js_sys::Array=bytes.into_iter().map(|a|JsValue::from(a)).collect();
@@ -90,7 +109,8 @@ pub fn game_process(s:Option<js_sys::ArrayBuffer>){
 }
 
 #[wasm_bindgen]
-pub fn game_draw(){
+pub fn game_draw(width:i32,height:i32){
+
     let game=unsafe{STATE.as_ref().unwrap().get_game()};
 
     //TODO get context every time?
@@ -104,6 +124,8 @@ pub fn game_draw(){
         .unwrap()
         .dyn_into::<WebGl2RenderingContext>().unwrap();
 
+        context.viewport(0, 0, width, height);
+          
     let mut p=unsafe{PROGRAM.as_mut().unwrap()};
 
 
@@ -131,12 +153,23 @@ pub fn game_draw(){
         }
     }
 
-    let dim=[800.0,600.0];
+    let window_dim_x=canvas.width() as f32;
+    let window_dim_y=canvas.height() as f32;
+    
+    let dim=[window_dim_x,window_dim_y];
     context.clear_color(0.0, 0.0, 0.0, 1.0);
     context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
 
-    p.draw(&context,&verts,dim,false,&[1.0,0.0,0.0,1.0]);
-    p.draw(&context,&squares,dim,true,&[0.0,1.0,0.0,1.0]);
+
+    let pp=game.state.bots[m.get_playerid().0 as usize].0.body.pos;
+    let offset=-(pp.inner_into::<f32>())+axgeom::vec2(window_dim_x,window_dim_y)/2.0;
+    let offset:[f32;2]=offset.into();
+
+    let wall_point_size=grid_viewport.cell_radius();
+    let bot_point_size=game.nonstate.radius*2.0;
+
+    p.draw(&context,&verts,dim,false,&[1.0,0.0,0.0,1.0],&offset,bot_point_size);
+    p.draw(&context,&squares,dim,true,&[0.0,1.0,0.0,1.0],&offset,wall_point_size);
 }
 
 #[wasm_bindgen(start)]

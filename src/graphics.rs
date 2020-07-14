@@ -17,11 +17,12 @@ impl MyProgram{
             r#"#version 300 es
             in vec2 position;
             out vec2 pos;
+            uniform vec2 offset;
             uniform mat3 mmatrix;
-
+            uniform float point_size;
             void main() {
-                gl_PointSize = 40.3;
-                vec3 pp=vec3(position,1.0);
+                gl_PointSize = point_size;
+                vec3 pp=vec3(position+offset,1.0);
                 gl_Position = vec4(mmatrix*pp, 1.0);
             }
         "#,
@@ -73,7 +74,14 @@ impl MyProgram{
         let square_program = link_program(&context, &vert_shader, &frag_shader_square)?;
         Ok(MyProgram{square_program,circle_program,buffer})
     }
-    pub fn draw(&mut self,context:&WebGl2RenderingContext,vertices:&[f32],game_dim:[f32;2],as_square:bool,color:&[f32;4]){
+    pub fn draw(&mut self,
+        context:&WebGl2RenderingContext,
+        vertices:&[f32],
+        game_dim:[f32;2],
+        as_square:bool,
+        color:&[f32;4],
+        offset:&[f32;2],
+        point_size:f32){
 
         
         let buffer=&self.buffer;
@@ -95,7 +103,13 @@ impl MyProgram{
         context.uniform_matrix3fv_with_f32_array(mat.as_ref(),false,&matrix);
         
 
+        let oo=context.get_uniform_location(program,"point_size");
+        context.uniform1f(oo.as_ref(),point_size);
+        
 
+        let oo=context.get_uniform_location(program,"offset");
+        context.uniform2f(oo.as_ref(),offset[0],offset[1]);
+        
 
         let bf=context.get_uniform_location(program,"bg");
         context.uniform4fv_with_f32_array(bf.as_ref(),color);
