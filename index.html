@@ -30,6 +30,7 @@
       let messages = []
       function socket_connect() {
           return new Promise(function(resolve, reject) {
+              console.log(window.location);
               //var server = new WebSocket('ws://127.0.0.1:12345');
               var server = new WebSocket('ws://192.168.4.40:12345');
               

@@ -3,12 +3,12 @@ extern crate console_error_panic_hook;
 use web_sys::WebGlBuffer;
 
 
-
+mod circle_program;
 mod graphics;
 mod console;
 use graphics::*;
-
-
+use crate::graphics::Args;
+use crate::graphics::create_draw_system;
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -17,7 +17,7 @@ use web_sys::{ErrorEvent, MessageEvent, WebSocket};
 use shclient_gen::*;
 
 static mut STATE: Option<Manager> = None;
-static mut PROGRAM:Option<MyProgram> = None;
+static mut PROGRAM:Option<DrawSys> = None;
 
 #[wasm_bindgen]
 pub fn game_initial(gameid:u32,name:js_sys::JsString)->js_sys::ArrayBuffer{
@@ -132,12 +132,11 @@ pub fn game_draw(width:i32,height:i32){
 
     let m=unsafe{STATE.as_ref().unwrap()};
     
-    let mut verts=Vec::new();
-    for (b,_) in m.get_game().state.bots.iter(){
-        let p:[f32;2]=b.body.pos.into();
-        verts.push(p[0]);
-        verts.push(p[1]);
-    }
+    let verts:Vec<_>=m.get_game().state.bots.iter().map(|(b,_)|{
+        let [xx,yy]:[f32;2]=b.body.pos.into();
+        Vertex([xx,yy,b.head.rot])
+    }).collect();
+
 
     let mut squares=Vec::new();
     let walls=&game.nonstate.walls;
@@ -147,9 +146,8 @@ pub fn game_draw(width:i32,height:i32){
             let curr=axgeom::vec2(x,y);
             if walls.get(curr) {
                 let pos=grid_viewport.to_world_center(axgeom::vec2(x, y));
-                let p:[f32;2]=pos.into();
-                squares.push(p[0]);
-                squares.push(p[1]);
+                let [xx,yy]:[f32;2]=pos.into();
+                squares.push(Vertex([xx,yy,1.0]));
             }
         }
     }
@@ -161,8 +159,6 @@ pub fn game_draw(width:i32,height:i32){
     context.clear_color(0.0, 0.0, 0.0, 1.0);
     context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
 
-
-    //let pp=game.state.bots[m.get_playerid().0 as usize].0.body.pos;
     let pp=m.get_camera();
     let offset=-(pp.inner_into::<f32>())+axgeom::vec2(window_dim_x,window_dim_y)/2.0;
     let offset:[f32;2]=offset.into();
@@ -170,8 +166,44 @@ pub fn game_draw(width:i32,height:i32){
     let wall_point_size=grid_viewport.cell_radius();
     let bot_point_size=game.nonstate.radius*2.0;
 
-    p.draw(&context,&verts,dim,false,&[1.0,0.0,0.0,1.0],&offset,bot_point_size);
-    p.draw(&context,&squares,dim,true,&[0.0,1.0,0.0,1.0],&offset,wall_point_size);
+
+    if let &Some([x,y])=m.get_target(){
+        let squares=vec!(Vertex([x,y,0.0]));
+        let args=Args{
+            context:&context,
+            vertices:&squares,
+            game_dim:dim,
+            as_square:true,
+            color:&[1.0,1.0,1.0,1.0],
+            offset:&offset,
+            point_size:6.0
+        };
+        p(args);
+    }
+
+    let args=Args{
+        context:&context,
+        vertices:&verts,
+        game_dim:dim,
+        as_square:false,
+        color:&[1.0,1.0,1.0,1.0],
+        offset:&offset,
+        point_size:bot_point_size
+    };
+    p(args);
+
+
+
+    let args=Args{
+        context:&context,
+        vertices:&squares,
+        game_dim:dim,
+        as_square:true,
+        color:&[0.0,1.0,0.0,1.0],
+        offset:&offset,
+        point_size:wall_point_size
+    };
+    p(args);
 }
 
 #[wasm_bindgen(start)]
@@ -184,65 +216,13 @@ pub fn main() -> Result<(), JsValue> {
         .get_context("webgl2").unwrap()
         .unwrap()
         .dyn_into::<WebGl2RenderingContext>().unwrap();
-    unsafe{PROGRAM=Some(MyProgram::new(&context).unwrap())};
+        let p=match create_draw_system(&context){
+            Ok(o)=>Box::new(o),
+            Err(e)=>{console_log!("{}",e);panic!("faail")}
+        };
+        
+    unsafe{PROGRAM=Some(p)};
     Ok(())
 
 
 }
-/*
-#[wasm_bindgen(start)]
-pub fn main() -> Result<(), JsValue> {
-    std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-
-    let document = web_sys::window().unwrap().document().unwrap();
-    let canvas = document.get_element_by_id("canvas").unwrap();
-    let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
-
-
-    dbg!("YOO");
-    let context = canvas
-        .get_context("webgl2")?
-        .unwrap()
-        .dyn_into::<WebGl2RenderingContext>()?;
-
-    
-    
-    let mut p=MyProgram::new(&context)?;
-    let m=unsafe{STATE.as_ref().unwrap()};
-    
-    let mut verts=Vec::new();
-    for (b,_) in m.get_game().state.bots.iter(){
-        let p:[f32;2]=b.body.pos.into();
-        verts.push(p[0]);
-        verts.push(p[1]);
-    }
-    //let vertices= [-0.7f32, -0.7, 0.7, -0.7, 0.0, 0.7];
-
-    //let vertices= [400.0, 500.0];
-
-    context.clear_color(0.0, 0.0, 0.0, 1.0);
-    context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
-
-    let dim=[800.0,600.0];
-
-
-    p.draw(&context,&verts,dim,true);
-    
-
-    
-    /*
-    let triangle_program=make_triangle_program(&context)?;
-    
-    let buffer=SimpleBuffer::new(&context)?;
-
-    let vertices: [f32; 9] = [-0.7, -0.7, 0.0, 0.7, -0.7, 0.0, 0.0, 0.7, 0.0];
-
-    context.clear_color(0.0, 0.0, 0.0, 1.0);
-    context.clear(WebGlRenderingContext::COLOR_BUFFER_BIT);
-
-    buffer.draw(&vertices,&context,&triangle_program);
-    */
-    
-    Ok(())
-}
-*/
