@@ -66,7 +66,8 @@
                   if (messages.length>0){
                     return resolve(messages.shift().data);
                   } 
-                  setTimeout(waitForFoo, 30);
+                  console.log("WAITING");
+                  setTimeout(waitForFoo, 1);
               })();
          });
       }
@@ -109,18 +110,21 @@
             console.log(o);
             socket.send(o);
 
-            let g1=await receive(socket);
-            let g2=await receive(socket);
-            game_new(0,"hay",g1,g2);
-            
+            {
+              let g1=await receive(socket);
+              //let g2=await receive(socket);
+              game_new(0,"hay",g1,socket);
+            }
             function delay(ms) {
               return new Promise(resolve => setTimeout(resolve, ms));
             }
+            
 
+            let framerate=16;
             let diff=0;
             while(true){
-              if (16-diff>0){
-                await delay(16-diff)
+              if (framerate-diff>0){
+                await delay(framerate-diff)
               }
               //await delay(5);
               const t0 = performance.now();
@@ -133,11 +137,12 @@
                 clicked=true;
               }
 
-              let k=game_premove(foo.x,foo.y,clicked);
-              if (k){
-                socket.send(k)
+              if (game_premove(foo.x,foo.y,clicked,socket)){
+                console.log("SENT");
                 let g1=await receive(socket)
-                game_process(g1);
+                console.log("FINALLY RECEIVED");
+                let gg1=new Uint8Array(g1);
+                game_process(gg1);
               }else{
                 game_process(null);
               }

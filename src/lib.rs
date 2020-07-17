@@ -34,29 +34,37 @@ pub fn game_initial(gameid:u32,name:js_sys::JsString)->js_sys::ArrayBuffer{
 }
 
 use crate::console::log;
-#[wasm_bindgen]
-pub fn game_new(gameid:u32,name:js_sys::JsString,a:js_sys::ArrayBuffer,b:js_sys::ArrayBuffer){
+#[wasm_bindgen] //TODO pass views instead
+pub fn game_new(gameid:u32,name:js_sys::JsString,a:js_sys::ArrayBuffer,socket:&web_sys::WebSocket){
     console_log!("YOOO");
     let gameid=GameID(gameid);
     let a=unsafe{
         js_sys::Uint8Array::new(&a).to_vec()
     };
+    /*
     let b=unsafe{
         js_sys::Uint8Array::new(&b).to_vec()
     };
+    */
+    
     console_log!("YOOO");
     let a:ServerToClient=bincode::deserialize(&a).map(|a|{println!("Received {:?}",a);a}).unwrap();
-    let b:ServerToClient=bincode::deserialize(&b).map(|b|{println!("Received {:?}",b);b}).unwrap();
+    //let b:ServerToClient=bincode::deserialize(&b).map(|b|{println!("Received {:?}",b);b}).unwrap();
     console_log!("YOOO");
     let name=PlayerName(name.into());
-    unsafe{
-        STATE=Some(Manager::new(gameid,name,a,b));
-    }
-    console_log!("YOOO");
+
+    let m=Manager::new(gameid,name,a);
+
+    unsafe{STATE=Some(m)};
+
+    //let bytes=bincode::serialize(&c).unwrap();
+    //socket.send_with_u8_array(&bytes);
+    //console_log!("YOOO");
+    
 }
 
 #[wasm_bindgen]
-pub fn game_premove(x:f32,y:f32,clicked:bool)->Option<js_sys::ArrayBuffer>{
+pub fn game_premove(x:f32,y:f32,clicked:bool,socket:&web_sys::WebSocket)->bool/*->Option<js_sys::Uint8Array>*/{
     let cursor=axgeom::vec2(x,y);
 
     let m=unsafe{STATE.as_mut().unwrap()};
@@ -86,21 +94,21 @@ pub fn game_premove(x:f32,y:f32,clicked:bool)->Option<js_sys::ArrayBuffer>{
     let k=m.premove(mycommit);
     if let Some(k)=k{
         let bytes=bincode::serialize(&k).unwrap();
-        let k:js_sys::Array=bytes.into_iter().map(|a|JsValue::from(a)).collect();
-        Some(js_sys::Uint8Array::new(&k).buffer())
+        
+        socket.send_with_u8_array(&bytes);
+        true
     }else{
-        None
+        false
     }
     
 }
 
 
 #[wasm_bindgen]
-pub fn game_process(s:Option<js_sys::ArrayBuffer>){
+pub fn game_process(s:Option<js_sys::Uint8Array>){
     let a=if let Some(a)=s{
-        let a=unsafe{
-            js_sys::Uint8Array::new(&a).to_vec()
-        };
+        let a=a.to_vec();
+
         let a:ServerToClient=bincode::deserialize(&a).map(|a|{println!("Received {:?}",a);a}).unwrap();
         Some(a)
     }else{
@@ -208,6 +216,7 @@ pub fn game_draw(width:i32,height:i32){
 
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
+    std::panic::set_hook(Box::new(console_error_panic_hook::hook));
     //TODO get context every time?
     let document = web_sys::window().unwrap().document().unwrap();
     let canvas = document.get_element_by_id("canvas").unwrap();
