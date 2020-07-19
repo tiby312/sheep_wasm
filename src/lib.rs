@@ -71,18 +71,21 @@ pub fn game_new(gameid:u32,name:js_sys::JsString,a:js_sys::ArrayBuffer,socket:&w
 }
 
 #[wasm_bindgen]
-pub fn game_premove(x:f32,y:f32,clicked:bool,socket:&web_sys::WebSocket)->bool/*->Option<js_sys::Uint8Array>*/{
+pub fn game_premove(width:f32,height:f32,x:f32,y:f32,clicked:bool,socket:&web_sys::WebSocket)->bool/*->Option<js_sys::Uint8Array>*/{
     let cursor=axgeom::vec2(x,y);
 
     let m=unsafe{STATE.as_mut().unwrap()};
 
+    /*
     let document = web_sys::window().unwrap().document().unwrap();
     let canvas = document.get_element_by_id("canvas").unwrap();
     let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
 
     let window_dim_x=canvas.width() as f32;
     let window_dim_y=canvas.height() as f32;
-    
+    */
+    let window_dim_x=width;
+    let window_dim_y=height;
 
 
     let mycommit=if clicked{
@@ -160,11 +163,12 @@ pub fn game_process(s:Option<js_sys::Uint8Array>){
 
 
 #[wasm_bindgen]
-pub fn game_draw(width:i32,height:i32){
+pub fn game_draw(width:i32,height:i32,context:&WebGl2RenderingContext){
 
     let game=unsafe{STATE.as_ref().unwrap().get_game()};
     let grid_viewport=&game.nonstate.grid_viewport;
     
+    /*
     //TODO get context every time?
     let document = web_sys::window().unwrap().document().unwrap();
     let canvas = document.get_element_by_id("canvas").unwrap();
@@ -177,16 +181,21 @@ pub fn game_draw(width:i32,height:i32){
         .dyn_into::<WebGl2RenderingContext>().unwrap();
 
         context.viewport(0, 0, width, height);
-          
+    */
+
     let mut p=unsafe{PROGRAM.as_mut().unwrap()};
 
 
     let m=unsafe{STATE.as_ref().unwrap()};
     
-
+    /*
     let window_dim_x=canvas.width() as f32;
     let window_dim_y=canvas.height() as f32;
+    */
+    let window_dim_x=width as f32;
+    let window_dim_y=height as f32;
     
+
     let dim=[window_dim_x,window_dim_y];
     context.clear_color(0.0, 0.0, 0.0, 1.0);
     context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
@@ -241,9 +250,20 @@ pub fn game_draw(width:i32,height:i32){
     p(args);
 }
 
+#[wasm_bindgen]
+pub fn init2(context:&WebGl2RenderingContext){
+    let p=match create_draw_system(context){
+        Ok(o)=>Box::new(o),
+        Err(e)=>{console_log!("{}",e);panic!("faail")}
+    };
+    unsafe{PROGRAM=Some(p)};
+}
+
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
+    
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+    /*
     //TODO get context every time?
     let document = web_sys::window().unwrap().document().unwrap();
     let canvas = document.get_element_by_id("canvas").unwrap();
@@ -256,8 +276,8 @@ pub fn main() -> Result<(), JsValue> {
             Ok(o)=>Box::new(o),
             Err(e)=>{console_log!("{}",e);panic!("faail")}
         };
-        
-    unsafe{PROGRAM=Some(p)};
+      */
+      
     Ok(())
 
 
