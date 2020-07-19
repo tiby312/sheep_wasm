@@ -15,7 +15,7 @@
     <canvas id='canvas' style='position:absolute; left:0px; top:0px;'>
     </canvas>
     -->
-    
+
     <!-- Note the usage of `type=module` here as this is an ES6 module -->
     <script type="module">
       // Use ES module import syntax to import functionality from the module
@@ -27,6 +27,18 @@
       // eventually the manual initialization won't be required!
       //import init, { add } from './pkg/without_a_bundler.js';
       import init, {init2,game_initial,game_new,game_premove,game_process,game_draw} from './pkg/without_a_bundler.js';
+
+
+      var worker = new Worker("worker.js",{
+        type: 'module'
+      });
+      
+      worker.onmessage = function(e) {
+        console.log("Received: " + e.data);
+      }
+      worker.postMessage("hello");
+
+
 
 
       let messages = []
