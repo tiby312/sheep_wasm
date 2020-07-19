@@ -18,11 +18,18 @@ use shclient_gen::*;
 
 static mut STATE: Option<Manager> = None;
 static mut PROGRAM:Option<DrawSys> = None;
+static mut LOCK:Option<std::sync::Mutex<DrawData>> = None;
 
+struct DrawData{
+    bots:Vec<Vertex>,
+    walls:Vec<Vertex>
+}
 #[wasm_bindgen]
 pub fn game_initial(gameid:u32,name:js_sys::JsString)->js_sys::ArrayBuffer{
     
-
+    unsafe{
+        LOCK=Some(std::sync::Mutex::new(DrawData{bots:Vec::new(),walls:Vec::new()}));
+    }
 
     let gameid=GameID(gameid);
     
@@ -114,14 +121,50 @@ pub fn game_process(s:Option<js_sys::Uint8Array>){
     }else{
         None
     };
-    unsafe{STATE.as_mut().unwrap().recv(a)}
+    let m=unsafe{STATE.as_mut().unwrap()};
+
+    m.recv(a);
+
+    let game=m.get_game();
+
+
+    let walls=&game.nonstate.walls;
+    let grid_viewport=&game.nonstate.grid_viewport;
+    
+    {
+        let mut k=unsafe{LOCK.as_ref().unwrap().lock().unwrap()};
+
+        k.bots.clear();
+        k.walls.clear();
+
+        k.bots.extend(m.get_game().state.bots.iter().map(|(b,_)|{
+            let [xx,yy]:[f32;2]=b.body.pos.into();
+            Vertex([xx,yy,b.head.rot])
+        }));
+
+        for x in 0..walls.dim().x {
+            for y in 0..walls.dim().y {
+                let curr=axgeom::vec2(x,y);
+                if walls.get(curr) {
+                    let pos=grid_viewport.to_world_center(axgeom::vec2(x, y));
+                    let [xx,yy]:[f32;2]=pos.into();
+                    k.walls.push(Vertex([xx,yy,1.0]));
+                }
+            }
+        }
+    }
+
 }
+
+
+
 
 #[wasm_bindgen]
 pub fn game_draw(width:i32,height:i32){
 
     let game=unsafe{STATE.as_ref().unwrap().get_game()};
-
+    let grid_viewport=&game.nonstate.grid_viewport;
+    
     //TODO get context every time?
     let document = web_sys::window().unwrap().document().unwrap();
     let canvas = document.get_element_by_id("canvas").unwrap();
@@ -140,25 +183,6 @@ pub fn game_draw(width:i32,height:i32){
 
     let m=unsafe{STATE.as_ref().unwrap()};
     
-    let verts:Vec<_>=m.get_game().state.bots.iter().map(|(b,_)|{
-        let [xx,yy]:[f32;2]=b.body.pos.into();
-        Vertex([xx,yy,b.head.rot])
-    }).collect();
-
-
-    let mut squares=Vec::new();
-    let walls=&game.nonstate.walls;
-    let grid_viewport=&game.nonstate.grid_viewport;
-     for x in 0..walls.dim().x {
-        for y in 0..walls.dim().y {
-            let curr=axgeom::vec2(x,y);
-            if walls.get(curr) {
-                let pos=grid_viewport.to_world_center(axgeom::vec2(x, y));
-                let [xx,yy]:[f32;2]=pos.into();
-                squares.push(Vertex([xx,yy,1.0]));
-            }
-        }
-    }
 
     let window_dim_x=canvas.width() as f32;
     let window_dim_y=canvas.height() as f32;
@@ -175,6 +199,8 @@ pub fn game_draw(width:i32,height:i32){
     let bot_point_size=game.nonstate.radius*2.0;
 
 
+    let k=unsafe{LOCK.as_ref().unwrap().lock().unwrap()};
+    /*
     if let &Some([x,y])=m.get_target(){
         let squares=vec!(Vertex([x,y,0.0]));
         let args=Args{
@@ -188,10 +214,11 @@ pub fn game_draw(width:i32,height:i32){
         };
         p(args);
     }
+    */
 
     let args=Args{
         context:&context,
-        vertices:&verts,
+        vertices:&k.bots,
         game_dim:dim,
         as_square:false,
         color:&[1.0,1.0,1.0,1.0],
@@ -204,7 +231,7 @@ pub fn game_draw(width:i32,height:i32){
 
     let args=Args{
         context:&context,
-        vertices:&squares,
+        vertices:&k.walls,
         game_dim:dim,
         as_square:true,
         color:&[0.0,1.0,0.0,1.0],
