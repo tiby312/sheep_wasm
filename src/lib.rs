@@ -18,7 +18,8 @@ use shclient_gen::*;
 
 static mut STATE: Option<Manager> = None;
 static mut PROGRAM:Option<DrawSys> = None;
-static mut LOCK:Option<std::sync::Mutex<DrawData>> = None;
+//static mut LOCK:Option<std::sync::Mutex<DrawData>> = None;
+static mut DRAW_DATA:Option<DrawData>=None;
 
 struct DrawData{
     bots:Vec<Vertex>,
@@ -26,11 +27,15 @@ struct DrawData{
 }
 #[wasm_bindgen]
 pub fn game_initial(gameid:u32,name:js_sys::JsString)->js_sys::ArrayBuffer{
-    
+    /*
     unsafe{
         LOCK=Some(std::sync::Mutex::new(DrawData{bots:Vec::new(),walls:Vec::new()}));
     }
-
+    */
+    unsafe{
+        DRAW_DATA=None;
+    }
+    
     let gameid=GameID(gameid);
     
     let name=PlayerName(name.into());
@@ -135,7 +140,7 @@ pub fn game_process(s:Option<js_sys::Uint8Array>){
     let grid_viewport=&game.nonstate.grid_viewport;
     
     {
-        let mut k=unsafe{LOCK.as_ref().unwrap().lock().unwrap()};
+        let k=unsafe{DRAW_DATA.as_mut().unwrap()};
 
         k.bots.clear();
         k.walls.clear();
@@ -208,7 +213,7 @@ pub fn game_draw(width:i32,height:i32,context:&WebGl2RenderingContext){
     let bot_point_size=game.nonstate.radius*2.0;
 
 
-    let k=unsafe{LOCK.as_ref().unwrap().lock().unwrap()};
+    let k=unsafe{DRAW_DATA.as_mut().unwrap()};
     /*
     if let &Some([x,y])=m.get_target(){
         let squares=vec!(Vertex([x,y,0.0]));
