@@ -7,8 +7,9 @@ let clicks = []
 
 var width=0;
 var height=0;
-
 var offscreen;
+var ready=false;
+
 onmessage=function(e){
     console.log(e);
     var data = e.data;
@@ -17,9 +18,11 @@ onmessage=function(e){
             offscreen=data.canvas;    
             width=data.width;
             height=data.height;
+            ready=true;
+
+
             break;
         case 'click':
-            console.log(data);
             clicks.push(data.mouse);
             break;
         case 'shutdown':
@@ -30,7 +33,6 @@ onmessage=function(e){
     };
 
     offscreen=e.data.canvas;
-    console.log(offscreen);
     //width=e.data[0];
     //height=e.data[1];
     //console.log("received message in worker",e);
@@ -64,7 +66,7 @@ function receive(socket){
              if (messages.length>0){
                return resolve(messages.shift().data);
              } 
-             console.log("WAITING");
+             //console.log("WAITING");
              setTimeout(waitForFoo, 1);
          })();
     });
@@ -98,14 +100,26 @@ async function run() {
     // Also note that the promise, when resolved, yields the wasm module's
     // exports which is the same as importing the `*_bg` module in other
     // modes
-    //await init();
-
+    
     await init();
-        
+
+    async function waitForReady(){
+        while (true){
+            if (ready) { return; };
+             await null; // prevents app from hanging
+        }
+    }
+
+    await waitForReady();
+
+
     console.log(offscreen);
+        
     var context=offscreen.getContext("webgl2");
 
     init2(context);
+
+
 
 
     try {
@@ -113,7 +127,7 @@ async function run() {
         socket.binaryType="arraybuffer";
         // ... use server
         let o=game_initial(0,"hay");
-        console.log(o);
+        //console.log(o);
         socket.send(o);
 
         {
@@ -124,10 +138,9 @@ async function run() {
         function delay(ms) {
           return new Promise(resolve => setTimeout(resolve, ms));
         }
-        
+
 
         function render(time) {
-            console.log(width,height);
             context.viewport(0, 0, width,height);
             
             game_draw(width,height,context);
@@ -135,6 +148,9 @@ async function run() {
             requestAnimationFrame(render);
         }
         requestAnimationFrame(render);
+
+        
+
       
         let framerate=16;
         let diff=0;
@@ -154,15 +170,16 @@ async function run() {
           }
 
           if (game_premove(width,height,foo.x,foo.y,clicked,socket)){
-            console.log("SENT");
+            //console.log("SENT");
             let g1=await receive(socket)
-            console.log("FINALLY RECEIVED");
+            //console.log("FINALLY RECEIVED");
             let gg1=new Uint8Array(g1);
             game_process(gg1);
           }else{
             game_process(null);
           }
           
+
 
           
           const t1 = performance.now();

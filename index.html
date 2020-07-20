@@ -61,7 +61,6 @@
 
 
         canvas.onclick = function(event) {
-          console.log(canvas);
           worker.postMessage({cmd:'click',mouse:getMousePos(canvas,event)}); //todo transfer instead
         };
       

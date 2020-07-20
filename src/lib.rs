@@ -18,7 +18,6 @@ use shclient_gen::*;
 
 static mut STATE: Option<Manager> = None;
 static mut PROGRAM:Option<DrawSys> = None;
-//static mut LOCK:Option<std::sync::Mutex<DrawData>> = None;
 static mut DRAW_DATA:Option<DrawData>=None;
 
 struct DrawData{
@@ -27,15 +26,10 @@ struct DrawData{
 }
 #[wasm_bindgen]
 pub fn game_initial(gameid:u32,name:js_sys::JsString)->js_sys::ArrayBuffer{
-    /*
     unsafe{
-        LOCK=Some(std::sync::Mutex::new(DrawData{bots:Vec::new(),walls:Vec::new()}));
+        DRAW_DATA=Some(DrawData{bots:Vec::new(),walls:Vec::new()});
     }
-    */
-    unsafe{
-        DRAW_DATA=None;
-    }
-    
+
     let gameid=GameID(gameid);
     
     let name=PlayerName(name.into());
